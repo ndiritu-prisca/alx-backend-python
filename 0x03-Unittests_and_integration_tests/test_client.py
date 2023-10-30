@@ -2,8 +2,9 @@
 """Test module for client.py"""
 
 from client import GithubOrgClient
-from parameterized import parameterized
+from parameterized import parameterized, parameterized_class
 from unittest.mock import patch, PropertyMock
+from fixtures import TEST_PAYLOAD
 
 import unittest
 
@@ -58,3 +59,36 @@ class TestGithubOrgClient(unittest.TestCase):
     def test_has_license(self, repo, key, expected):
         """Method to test has_license"""
         self.assertEqual(GithubOrgClient.has_license(repo, key), expected)
+
+    @parameterized_class([
+        ("org_payload", "repos_payload", "expected_repos", "apache2_repos"),
+        TEST_PAYLOAD
+    ])
+    class TestIntegrationGithubOrgClient(unittest.TestCase):
+        """Class test using integration"""
+        @classmethod
+        def setUpClass(cls):
+            """Method for setting up the class"""
+            cls.get_patcher = patch('client.requests.get')
+            cls.mock_get = cls.get_patcher.start()
+
+            cls.mock_get.side_effect = [payload for payload in cls.org_payload]
+
+        @classmethod
+        def tearDownClass(cls):
+            """Method for tearing down the class"""
+            cls.get_patcher.stop()
+
+        def test_public_repos(self):
+            """Method to test public_repos"""
+            test_instance = GithubOrgClient("test")
+
+            public_repos = test_instance.public_repos()
+            self.assertEqual(public_repos, self.expected_repos)
+
+        def test_public_repos_with_license(self):
+            """Method to test public_repos_with_license"""
+            test_instance = GithubOrgClient("test")
+
+            apache2_repos = test_instance.public_repos(license="Apache-2.0")
+            self.assertEqual(apache2_repos, self.apache2_repos)
